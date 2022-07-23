@@ -386,7 +386,7 @@ func retrievePlayers(ctx context.Context, tenantDB dbOrTx, idList []string) (map
 	sql, params, _ := sqlx.In(
 		"SELECT * FROM player WHERE id IN (?)", idList,
 	)
-	if err := tenantDB.GetContext(ctx, &p, sql, params...); err != nil {
+	if err := tenantDB.SelectContext(ctx, &p, sql, params...); err != nil {
 		return nil, fmt.Errorf("error Select players:  %w", err)
 	}
 	elementMap := make(map[string]PlayerRow)

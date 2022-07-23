@@ -24,6 +24,6 @@ for f in ../tenant_db/*.db; do
   echo "Processing $f file..";
   sqlite3 -line $f 'CREATE INDEX `created_at_idx` ON `competition` (`created_at`);'
   sqlite3 -line $f 'CREATE INDEX `comp_pla_row_idx` ON player_score (`competition_id`, `player_id`, `row_num`);'
-  sqlite3 -line $f 'CREATE INDEX `comp_score_idx` ON player_score (`competition_id`, `score`, `row_num`)';
+  sqlite3 -line $f 'CREATE INDEX `comp_score_idx` ON player_score (`competition_id`, `score` DESC, `row_num` ASC)';
   sqlite3 -line $f 'CREATE INDEX `player_idx` ON player_score (`player_id`);'
 done

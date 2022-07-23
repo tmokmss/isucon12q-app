@@ -1410,7 +1410,7 @@ func competitionRankingHandler(c echo.Context) error {
 	if err := tenantDB.SelectContext(
 		ctx,
 		&pss,
-		"SELECT * FROM player_score WHERE competition_id = ? ORDER BY score, row_num DESC",
+		"SELECT * FROM player_score WHERE competition_id = ? ORDER BY score DESC, row_num ASC",
 		competitionID,
 	); err != nil {
 		return fmt.Errorf("error Select player_score: tenantID=%d, competitionID=%s, %w", tenant.ID, competitionID, err)

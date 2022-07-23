@@ -1400,6 +1400,9 @@ func competitionRankingHandler(c echo.Context) error {
 		playerIDList = append(playerIDList, ps.PlayerID)
 	}
 	playerIDMap, err := retrievePlayers(ctx, tenantDB, playerIDList)
+	if err != nil {
+		return fmt.Errorf("error retrievePlayer: %w", err)
+	}
 	for _, ps := range pss {
 		// player_scoreが同一player_id内ではrow_numの降順でソートされているので
 		// 現れたのが2回目以降のplayer_idはより大きいrow_numでスコアが出ているとみなせる

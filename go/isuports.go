@@ -380,6 +380,22 @@ func retrievePlayer(ctx context.Context, tenantDB dbOrTx, id string) (*PlayerRow
 	return &p, nil
 }
 
+// 参加者を取得する
+func retrievePlayers(ctx context.Context, tenantDB dbOrTx, idList []string) (map[string]PlayerRow, error) {
+	var p []PlayerRow
+	sql, params, _ := sqlx.In(
+		"SELECT * FROM player WHERE id IN (?)", idList,
+	)
+	if err := tenantDB.GetContext(ctx, &p, sql, params...); err != nil {
+		return nil, fmt.Errorf("error Select players:  %w", err)
+	}
+	elementMap := make(map[string]PlayerRow)
+	for i := 0; i < len(p); i += 2 {
+		elementMap[p[i].ID] = p[i]
+	}
+	return elementMap, nil
+}
+
 // 参加者を認可する
 // 参加者向けAPIで呼ばれる
 func authorizePlayer(ctx context.Context, tenantDB dbOrTx, id string) error {
@@ -1055,6 +1071,7 @@ func competitionScoreHandler(c echo.Context) error {
 	}
 	defer fl.Close()
 	var rowNum int64
+	playerIDList := []string{}
 	playerScoreRows := []PlayerScoreRow{}
 	for {
 		rowNum++
@@ -1069,16 +1086,7 @@ func competitionScoreHandler(c echo.Context) error {
 			return fmt.Errorf("row must have two columns: %#v", row)
 		}
 		playerID, scoreStr := row[0], row[1]
-		if _, err := retrievePlayer(ctx, tenantDB, playerID); err != nil {
-			// 存在しない参加者が含まれている
-			if errors.Is(err, sql.ErrNoRows) {
-				return echo.NewHTTPError(
-					http.StatusBadRequest,
-					fmt.Sprintf("player not found: %s", playerID),
-				)
-			}
-			return fmt.Errorf("error retrievePlayer: %w", err)
-		}
+		playerIDList = append(playerIDList, playerID)
 		var score int64
 		if score, err = strconv.ParseInt(scoreStr, 10, 64); err != nil {
 			return echo.NewHTTPError(
@@ -1103,6 +1111,19 @@ func competitionScoreHandler(c echo.Context) error {
 			UpdatedAt:     now,
 		})
 	}
+	players, err := retrievePlayers(ctx, tenantDB, playerIDList)
+	if err != nil {
+		return fmt.Errorf("error retrievePlayer: %w", err)
+	}
+	for _, ps := range playerScoreRows {
+		if _, ok := players[ps.PlayerID]; ok {
+		} else {
+			return echo.NewHTTPError(
+				http.StatusBadRequest,
+				fmt.Sprintf("player not found: %s", ps.PlayerID),
+			)
+		}
+	}
 
 	if _, err := tenantDB.ExecContext(
 		ctx,
@@ -1111,18 +1132,14 @@ func competitionScoreHandler(c echo.Context) error {
 	); err != nil {
 		return fmt.Errorf("error Delete player_score: tenantID=%d, competitionID=%s, %w", v.tenantID, competitionID, err)
 	}
-	for _, ps := range playerScoreRows {
-		if _, err := tenantDB.NamedExecContext(
-			ctx,
-			"INSERT INTO player_score (id, tenant_id, player_id, competition_id, score, row_num, created_at, updated_at) VALUES (:id, :tenant_id, :player_id, :competition_id, :score, :row_num, :created_at, :updated_at)",
-			ps,
-		); err != nil {
-			return fmt.Errorf(
-				"error Insert player_score: id=%s, tenant_id=%d, playerID=%s, competitionID=%s, score=%d, rowNum=%d, createdAt=%d, updatedAt=%d, %w",
-				ps.ID, ps.TenantID, ps.PlayerID, ps.CompetitionID, ps.Score, ps.RowNum, ps.CreatedAt, ps.UpdatedAt, err,
-			)
-
-		}
+	if _, err := tenantDB.NamedExecContext(
+		ctx,
+		"INSERT INTO player_score (id, tenant_id, player_id, competition_id, score, row_num, created_at, updated_at) VALUES (:id, :tenant_id, :player_id, :competition_id, :score, :row_num, :created_at, :updated_at)",
+		playerScoreRows,
+	); err != nil {
+		return fmt.Errorf(
+			"error Insert  %w", err,
+		)
 	}
 
 	return c.JSON(http.StatusOK, SuccessResult{

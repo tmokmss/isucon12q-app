@@ -28,3 +28,10 @@ func (c *cacheSlice) Get(key string) (PlayerRow, bool) {
 	c.RUnlock()
 	return v, found
 }
+
+func (c *cacheSlice) Delete(key string) bool {
+	c.Lock()
+	delete(c.items, key)
+	c.Unlock()
+	return true
+}

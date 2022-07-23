@@ -888,6 +888,7 @@ func playerDisqualifiedHandler(c echo.Context) error {
 	playerID := c.Param("player_id")
 
 	now := time.Now().Unix()
+	playerCache.Delete(fmt.Sprintf("%d#%s", v.tenantID, playerID))
 	if _, err := tenantDB.ExecContext(
 		ctx,
 		"UPDATE player SET is_disqualified = ?, updated_at = ? WHERE id = ?",

@@ -129,6 +129,8 @@ func SetCacheControlPrivate(next echo.HandlerFunc) echo.HandlerFunc {
 	}
 }
 
+var playerCache *cacheSlice
+
 // Run は cmd/isuports/main.go から呼ばれるエントリーポイントです
 func Run() {
 	runtime.SetBlockProfileRate(1)
@@ -140,6 +142,8 @@ func Run() {
 	e := echo.New()
 	e.Debug = false
 	e.Logger.SetLevel(log.INFO)
+
+	playerCache = NewCacheSlice()
 
 	var (
 		sqlLogger io.Closer
@@ -372,10 +376,18 @@ type PlayerRow struct {
 }
 
 // 参加者を取得する
-func retrievePlayer(ctx context.Context, tenantDB dbOrTx, id string) (*PlayerRow, error) {
+func retrievePlayer(ctx context.Context, tenantDB dbOrTx, id string, tenantId int64) (*PlayerRow, error) {
 	var p PlayerRow
-	if err := tenantDB.GetContext(ctx, &p, "SELECT * FROM player WHERE id = ?", id); err != nil {
-		return nil, fmt.Errorf("error Select player: id=%s, %w", id, err)
+	key := fmt.Sprintf("%d#%s", tenantId, id)
+
+	player, contain := playerCache.Get(key)
+	if contain {
+		p = player
+	} else {
+		if err := tenantDB.GetContext(ctx, &p, "SELECT * FROM player WHERE id = ?", id); err != nil {
+			return nil, fmt.Errorf("error Select player: id=%s, %w", id, err)
+		}
+		playerCache.Set(key, player)
 	}
 	return &p, nil
 }
@@ -401,8 +413,8 @@ func retrievePlayers(ctx context.Context, tenantDB dbOrTx, idList []string) (map
 
 // 参加者を認可する
 // 参加者向けAPIで呼ばれる
-func authorizePlayer(ctx context.Context, tenantDB dbOrTx, id string) error {
-	player, err := retrievePlayer(ctx, tenantDB, id)
+func authorizePlayer(ctx context.Context, tenantDB dbOrTx, id string, tenantId int64) error {
+	player, err := retrievePlayer(ctx, tenantDB, id, tenantId)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return echo.NewHTTPError(http.StatusUnauthorized, "player not found")
@@ -886,7 +898,7 @@ func playerDisqualifiedHandler(c echo.Context) error {
 			true, now, playerID, err,
 		)
 	}
-	p, err := retrievePlayer(ctx, tenantDB, playerID)
+	p, err := retrievePlayer(ctx, tenantDB, playerID, v.tenantID)
 	if err != nil {
 		// 存在しないプレイヤー
 		if errors.Is(err, sql.ErrNoRows) {
@@ -1232,7 +1244,7 @@ func playerHandler(c echo.Context) error {
 	}
 	defer tenantDB.Close()
 
-	if err := authorizePlayer(ctx, tenantDB, v.playerID); err != nil {
+	if err := authorizePlayer(ctx, tenantDB, v.playerID, v.tenantID); err != nil {
 		return err
 	}
 
@@ -1240,7 +1252,7 @@ func playerHandler(c echo.Context) error {
 	if playerID == "" {
 		return echo.NewHTTPError(http.StatusBadRequest, "player_id is required")
 	}
-	p, err := retrievePlayer(ctx, tenantDB, playerID)
+	p, err := retrievePlayer(ctx, tenantDB, playerID, v.tenantID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return echo.NewHTTPError(http.StatusNotFound, "player not found")
@@ -1340,7 +1352,7 @@ func competitionRankingHandler(c echo.Context) error {
 	}
 	defer tenantDB.Close()
 
-	if err := authorizePlayer(ctx, tenantDB, v.playerID); err != nil {
+	if err := authorizePlayer(ctx, tenantDB, v.playerID, v.tenantID); err != nil {
 		return err
 	}
 
@@ -1399,7 +1411,7 @@ func competitionRankingHandler(c echo.Context) error {
 		return fmt.Errorf("error Select player_score: tenantID=%d, competitionID=%s, %w", tenant.ID, competitionID, err)
 	}
 	ranks := make([]CompetitionRank, 0, len(pss))
-	scoredPlayerSet := make(map[string]struct{}, len(pss))
+
 	playerIDList := []string{}
 	for _, ps := range pss {
 		playerIDList = append(playerIDList, ps.PlayerID)
@@ -1408,6 +1420,8 @@ func competitionRankingHandler(c echo.Context) error {
 	if err != nil {
 		return fmt.Errorf("error retrievePlayer: %w", err)
 	}
+
+	scoredPlayerSet := make(map[string]struct{}, len(pss))
 	for _, ps := range pss {
 		// player_scoreが同一player_id内ではrow_numの降順でソートされているので
 		// 現れたのが2回目以降のplayer_idはより大きいrow_numでスコアが出ているとみなせる
@@ -1486,7 +1500,7 @@ func playerCompetitionsHandler(c echo.Context) error {
 	}
 	defer tenantDB.Close()
 
-	if err := authorizePlayer(ctx, tenantDB, v.playerID); err != nil {
+	if err := authorizePlayer(ctx, tenantDB, v.playerID, v.tenantID); err != nil {
 		return err
 	}
 	return competitionsHandler(c, v, tenantDB)
@@ -1599,7 +1613,7 @@ func meHandler(c echo.Context) error {
 		return fmt.Errorf("error connectToTenantDB: %w", err)
 	}
 	ctx := context.Background()
-	p, err := retrievePlayer(ctx, tenantDB, v.playerID)
+	p, err := retrievePlayer(ctx, tenantDB, v.playerID, v.tenantID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return c.JSON(http.StatusOK, SuccessResult{

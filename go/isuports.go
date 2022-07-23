@@ -1127,6 +1127,7 @@ func competitionScoreHandler(c echo.Context) error {
 		}
 		now := time.Now().Unix()
 		playerScoreRows = append(playerScoreRows, PlayerScoreRow{
+			ID:            "dummy",
 			TenantID:      v.tenantID,
 			PlayerID:      playerID,
 			CompetitionID: competitionID,
@@ -1147,9 +1148,9 @@ func competitionScoreHandler(c echo.Context) error {
 	}
 
 	iii := rowNum
-	for _, ps := range playerScoreRows {
+	for i, ps := range playerScoreRows {
 		iii = iii - 1
-		ps.ID = fmt.Sprintf("%x", largestID-iii)
+		playerScoreRows[i].ID = fmt.Sprintf("%x", largestID-iii)
 		if _, ok := players[ps.PlayerID]; ok {
 		} else {
 			return echo.NewHTTPError(

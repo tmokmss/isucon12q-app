@@ -392,19 +392,36 @@ func retrievePlayer(ctx context.Context, tenantDB dbOrTx, id string, tenantId in
 
 // 参加者を取得する
 func retrievePlayers(ctx context.Context, tenantDB dbOrTx, idList []string) (map[string]PlayerRow, error) {
-	var p []PlayerRow
-	sql, params, err := sqlx.In(
-		"SELECT * FROM player WHERE id IN (?)", idList,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("error build query to select players:  %w", err)
+	var res []PlayerRow
+	if len(idList) == 0 {
+		return make(map[string]PlayerRow), nil
 	}
-	if err := tenantDB.SelectContext(ctx, &p, sql, params...); err != nil {
-		return nil, fmt.Errorf("error Select players:  %w", err)
+
+	chunkSize := 1000
+	for i := 0; i < len(idList); i += chunkSize {
+		var p []PlayerRow
+		end := i + chunkSize
+
+		if end > len(idList) {
+			end = len(idList)
+		}
+
+		sql, params, err := sqlx.In(
+			"SELECT * FROM player WHERE id IN (?)", idList[i:end],
+		)
+		if err != nil {
+			return nil, fmt.Errorf("error build query to select players:  %w", err)
+		}
+		if err := tenantDB.SelectContext(ctx, &p, sql, params...); err != nil {
+			return nil, fmt.Errorf("error Select players: count: %d,  %w", len(idList), err)
+		}
+
+		res = append(res, p...)
 	}
+
 	elementMap := make(map[string]PlayerRow)
-	for i := 0; i < len(p); i += 1 {
-		elementMap[p[i].ID] = p[i]
+	for i := 0; i < len(res); i += 1 {
+		elementMap[res[i].ID] = res[i]
 	}
 	return elementMap, nil
 }

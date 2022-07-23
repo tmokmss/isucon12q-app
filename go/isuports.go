@@ -811,7 +811,6 @@ func playersAddHandler(c echo.Context) error {
 	}
 	displayNames := params["display_name[]"]
 
-	// TODO: bulk insert
 	playerReq := []PlayerRow{}
 	pds := make([]PlayerDetail, 0, len(displayNames))
 	count := len(displayNames)
@@ -819,7 +818,6 @@ func playersAddHandler(c echo.Context) error {
 	if err != nil {
 		return fmt.Errorf("error dispenseID: %w", err)
 	}
-	//playerIds := []string{}
 
 	for i := 0; i < count; i += 1 {
 		displayName := displayNames[i]
@@ -829,12 +827,7 @@ func playersAddHandler(c echo.Context) error {
 		now := time.Now().Unix()
 		p := PlayerRow{ID: id, TenantID: v.tenantID, DisplayName: displayName, IsDisqualified: false, CreatedAt: now, UpdatedAt: now}
 		playerReq = append(playerReq, p)
-		//playerIds = append(playerIds, id)
-		// originally each row was inserted here
-		//p, err := retrievePlayer(ctx, tenantDB, id)
-		//if err != nil {
-		//	return fmt.Errorf("error retrievePlayer: %w", err)
-		//}
+
 		pds = append(pds, PlayerDetail{
 			ID:             p.ID,
 			DisplayName:    p.DisplayName,

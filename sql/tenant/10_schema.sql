@@ -35,4 +35,4 @@ CREATE TABLE player_score (
 
 CREATE INDEX `comp_pla_row_idx` ON player_score (`competition_id`, `player_id`, `row_num`);
 CREATE INDEX `comp_row_idx` ON player_score (`competition_id`, `row_num`);
-CREATE INDEX `pla_idx` ON player_scor (`player_id`);
+CREATE INDEX `player_idx` ON player_score (`player_id`);

@@ -36,5 +36,4 @@ CREATE TABLE player_score (
 CREATE INDEX `comp_pla_row_idx` ON player_score (`competition_id`, `player_id`, `row_num`);
 CREATE INDEX `comp_score_idx` ON player_score (`competition_id`, `score` DESC, `row_num` ASC);
 CREATE INDEX `player_idx` ON player_score (`player_id`);
-CREATE INDEX `created_at_idx` ON competition (`created_at`);
 

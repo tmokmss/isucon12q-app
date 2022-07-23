@@ -13,7 +13,6 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
-	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -133,30 +132,30 @@ var competitionCache *cacheSliceCompetition
 
 // Run は cmd/isuports/main.go から呼ばれるエントリーポイントです
 func Run() {
-	runtime.SetBlockProfileRate(1)
-	runtime.SetMutexProfileFraction(1)
-	go func() {
-		log.Print(http.ListenAndServe("0.0.0.0:6060", nil))
-	}()
+	//runtime.SetBlockProfileRate(1)
+	//runtime.SetMutexProfileFraction(1)
+	//go func() {
+	//	log.Print(http.ListenAndServe("0.0.0.0:6060", nil))
+	//}()
 
 	e := echo.New()
 	e.Debug = false
-	e.Logger.SetLevel(log.INFO)
-	e.Use(middleware.Logger())
+	e.Logger.SetLevel(log.OFF)
+	//e.Use(middleware.Logger())
 
 	var (
-		sqlLogger io.Closer
-		err       error
+		//sqlLogger io.Closer
+		err error
 	)
 	// sqliteのクエリログを出力する設定
 	// 環境変数 ISUCON_SQLITE_TRACE_FILE を設定すると、そのファイルにクエリログをJSON形式で出力する
 	// 未設定なら出力しない
 	// sqltrace.go を参照
-	sqliteDriverName, sqlLogger, err = initializeSQLLogger()
-	if err != nil {
-		e.Logger.Panicf("error initializeSQLLogger: %s", err)
-	}
-	defer sqlLogger.Close()
+	//sqliteDriverName, sqlLogger, err = initializeSQLLogger()
+	//if err != nil {
+	//	e.Logger.Panicf("error initializeSQLLogger: %s", err)
+	//}
+	//defer sqlLogger.Close()
 
 	e.Use(middleware.Recover())
 	e.Use(SetCacheControlPrivate)

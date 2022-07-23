@@ -1102,6 +1102,7 @@ func competitionScoreHandler(c echo.Context) error {
 	playerIDList := []string{}
 	playerScoreRows := []PlayerScoreRow{}
 	playerScoreRowsMap := map[string]PlayerScoreRow{}
+	count := 0
 	for {
 		rowNum++
 		row, err := r.Read()
@@ -1134,6 +1135,7 @@ func competitionScoreHandler(c echo.Context) error {
 			CreatedAt:     now,
 			UpdatedAt:     now,
 		}
+		count += 1
 	}
 
 	for _, value := range playerScoreRowsMap {
@@ -1181,7 +1183,7 @@ func competitionScoreHandler(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, SuccessResult{
 		Status: true,
-		Data:   ScoreHandlerResult{Rows: int64(len(playerScoreRows))},
+		Data:   ScoreHandlerResult{Rows: int64(count)},
 	})
 }
 

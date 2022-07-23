@@ -383,9 +383,12 @@ func retrievePlayer(ctx context.Context, tenantDB dbOrTx, id string) (*PlayerRow
 // 参加者を取得する
 func retrievePlayers(ctx context.Context, tenantDB dbOrTx, idList []string) (map[string]PlayerRow, error) {
 	var p []PlayerRow
-	sql, params, _ := sqlx.In(
+	sql, params, err := sqlx.In(
 		"SELECT * FROM player WHERE id IN (?)", idList,
 	)
+	if err != nil {
+		return nil, fmt.Errorf("error build query to select players:  %w", err)
+	}
 	if err := tenantDB.SelectContext(ctx, &p, sql, params...); err != nil {
 		return nil, fmt.Errorf("error Select players:  %w", err)
 	}

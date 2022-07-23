@@ -1125,9 +1125,6 @@ func competitionScoreHandler(c echo.Context) error {
 				fmt.Sprintf("error strconv.ParseUint: scoreStr=%s, %s", scoreStr, err),
 			)
 		}
-		if err != nil {
-			return fmt.Errorf("error dispenseID: %w", err)
-		}
 		now := time.Now().Unix()
 		playerScoreRows = append(playerScoreRows, PlayerScoreRow{
 			TenantID:      v.tenantID,
@@ -1140,16 +1137,20 @@ func competitionScoreHandler(c echo.Context) error {
 		})
 	}
 
-	idd, err := dispenseID(ctx, rowNum)
-	iii := rowNum
+	largestID, err := dispenseID(ctx, rowNum)
+	if err != nil {
+		return fmt.Errorf("error dispenseID: %w", err)
+	}
 	players, err := retrievePlayers(ctx, tenantDB, playerIDList)
 	if err != nil {
 		return fmt.Errorf("error retrievePlayer: %w", err)
 	}
+
+	iii := rowNum
 	for _, ps := range playerScoreRows {
-		iii--
+		iii = iii - 1
+		ps.ID = fmt.Sprintf("%x", largestID-iii)
 		if _, ok := players[ps.PlayerID]; ok {
-			ps.ID = fmt.Sprintf("%x", idd-iii)
 		} else {
 			return echo.NewHTTPError(
 				http.StatusBadRequest,

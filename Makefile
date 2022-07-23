@@ -11,7 +11,7 @@ systemctl-list:
 	systemctl list-unit-files --type=service
 
 alp:
-	sudo cat /var/log/nginx/access.log | alp ltsv -m '/api/condition/.*','/isu/.*/condition','/isu/.*/graph','/api/isu/.*/icon','/api/isu/.*','/isu/.*','/assets/.*'
+	sudo cat /var/log/nginx/access.log | alp ltsv -m '/api/player/competition/.*/ranking','/api/player/player/.*','/api/organizer/competition/.*/score','/api/organizer/player/.*/disqualified','/api/organizer/competition/.*/finish'
 
 ptq:
 	sudo pt-query-digest --limit 15 /var/log/mysql/mysql-slow.log

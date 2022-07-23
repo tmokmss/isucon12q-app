@@ -899,6 +899,7 @@ func playerDisqualifiedHandler(c echo.Context) error {
 			true, now, playerID, err,
 		)
 	}
+	playerCache.Delete(fmt.Sprintf("%d#%s", v.tenantID, playerID))
 	p, err := retrievePlayer(ctx, tenantDB, playerID, v.tenantID)
 	if err != nil {
 		// 存在しないプレイヤー

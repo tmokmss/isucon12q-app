@@ -139,7 +139,7 @@ func Run() {
 
 	e := echo.New()
 	e.Debug = true
-	e.Logger.SetLevel(log.DEBUG)
+	e.Logger.SetLevel(log.INFO)
 
 	var (
 		sqlLogger io.Closer

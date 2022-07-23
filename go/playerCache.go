@@ -8,7 +8,7 @@ type cacheSlice struct {
 	items map[string]PlayerRow
 }
 
-func NewCacheSlice() *cacheSlice {
+func NewPlayerCacheSlice() *cacheSlice {
 	m := make(map[string]PlayerRow)
 	c := &cacheSlice{
 		items: m,

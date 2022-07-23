@@ -130,6 +130,7 @@ func SetCacheControlPrivate(next echo.HandlerFunc) echo.HandlerFunc {
 }
 
 var playerCache *cacheSlice
+var competitionCache *cacheSliceCompetition
 
 // Run は cmd/isuports/main.go から呼ばれるエントリーポイントです
 func Run() {
@@ -143,7 +144,8 @@ func Run() {
 	e.Debug = false
 	e.Logger.SetLevel(log.INFO)
 
-	playerCache = NewCacheSlice()
+	playerCache = NewPlayerCacheSlice()
+	competitionCache = NewCompetitionCacheSlice()
 
 	var (
 		sqlLogger io.Closer
@@ -437,10 +439,18 @@ type CompetitionRow struct {
 }
 
 // 大会を取得する
-func retrieveCompetition(ctx context.Context, tenantDB dbOrTx, id string) (*CompetitionRow, error) {
+func retrieveCompetition(ctx context.Context, tenantDB dbOrTx, id string, tenantId int64) (*CompetitionRow, error) {
 	var c CompetitionRow
-	if err := tenantDB.GetContext(ctx, &c, "SELECT * FROM competition WHERE id = ?", id); err != nil {
-		return nil, fmt.Errorf("error Select competition: id=%s, %w", id, err)
+	key := fmt.Sprintf("%d#%s", tenantId, id)
+
+	competition, contain := competitionCache.Get(key)
+	if contain {
+		c = competition
+	} else {
+		if err := tenantDB.GetContext(ctx, &c, "SELECT * FROM competition WHERE id = ?", id); err != nil {
+			return nil, fmt.Errorf("error Select competition: id=%s, %w", id, err)
+		}
+		competitionCache.Set(key, c)
 	}
 	return &c, nil
 }
@@ -574,7 +584,7 @@ type VisitHistorySummaryRow struct {
 
 // 大会ごとの課金レポートを計算する
 func billingReportByCompetition(ctx context.Context, tenantDB dbOrTx, tenantID int64, competitonID string) (*BillingReport, error) {
-	comp, err := retrieveCompetition(ctx, tenantDB, competitonID)
+	comp, err := retrieveCompetition(ctx, tenantDB, competitonID, tenantID)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieveCompetition: %w", err)
 	}
@@ -998,7 +1008,7 @@ func competitionFinishHandler(c echo.Context) error {
 	if id == "" {
 		return echo.NewHTTPError(http.StatusBadRequest, "competition_id required")
 	}
-	_, err = retrieveCompetition(ctx, tenantDB, id)
+	_, err = retrieveCompetition(ctx, tenantDB, id, v.tenantID)
 	if err != nil {
 		// 存在しない大会
 		if errors.Is(err, sql.ErrNoRows) {
@@ -1008,6 +1018,7 @@ func competitionFinishHandler(c echo.Context) error {
 	}
 
 	now := time.Now().Unix()
+	competitionCache.Delete(fmt.Sprintf("%d#%s", v.tenantID, id))
 	if _, err := tenantDB.ExecContext(
 		ctx,
 		"UPDATE competition SET finished_at = ?, updated_at = ? WHERE id = ?",
@@ -1018,6 +1029,7 @@ func competitionFinishHandler(c echo.Context) error {
 			now, now, id, err,
 		)
 	}
+	competitionCache.Delete(fmt.Sprintf("%d#%s", v.tenantID, id))
 	return c.JSON(http.StatusOK, SuccessResult{Status: true})
 }
 
@@ -1048,7 +1060,7 @@ func competitionScoreHandler(c echo.Context) error {
 	if competitionID == "" {
 		return echo.NewHTTPError(http.StatusBadRequest, "competition_id required")
 	}
-	comp, err := retrieveCompetition(ctx, tenantDB, competitionID)
+	comp, err := retrieveCompetition(ctx, tenantDB, competitionID, v.tenantID)
 	if err != nil {
 		// 存在しない大会
 		if errors.Is(err, sql.ErrNoRows) {
@@ -1298,7 +1310,7 @@ func playerHandler(c echo.Context) error {
 
 	psds := make([]PlayerScoreDetail, 0, len(pss))
 	for _, ps := range pss {
-		comp, err := retrieveCompetition(ctx, tenantDB, ps.CompetitionID)
+		comp, err := retrieveCompetition(ctx, tenantDB, ps.CompetitionID, v.tenantID)
 		if err != nil {
 			return fmt.Errorf("error retrieveCompetition: %w", err)
 		}
@@ -1364,7 +1376,7 @@ func competitionRankingHandler(c echo.Context) error {
 	}
 
 	// 大会の存在確認
-	competition, err := retrieveCompetition(ctx, tenantDB, competitionID)
+	competition, err := retrieveCompetition(ctx, tenantDB, competitionID, v.tenantID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return echo.NewHTTPError(http.StatusNotFound, "competition not found")

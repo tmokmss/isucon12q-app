@@ -1101,6 +1101,7 @@ func competitionScoreHandler(c echo.Context) error {
 	var rowNum int64
 	playerIDList := []string{}
 	playerScoreRows := []PlayerScoreRow{}
+	playerScoreRowsMap := map[string]PlayerScoreRow{}
 	for {
 		rowNum++
 		row, err := r.Read()
@@ -1123,7 +1124,7 @@ func competitionScoreHandler(c echo.Context) error {
 			)
 		}
 		now := time.Now().Unix()
-		playerScoreRows = append(playerScoreRows, PlayerScoreRow{
+		playerScoreRowsMap[playerID] = PlayerScoreRow{
 			ID:            "dummy",
 			TenantID:      v.tenantID,
 			PlayerID:      playerID,
@@ -1132,7 +1133,11 @@ func competitionScoreHandler(c echo.Context) error {
 			RowNum:        rowNum,
 			CreatedAt:     now,
 			UpdatedAt:     now,
-		})
+		}
+	}
+
+	for _, value := range playerScoreRowsMap {
+		playerScoreRows = append(playerScoreRows, value)
 	}
 
 	largestID, err := dispenseID(ctx, rowNum)

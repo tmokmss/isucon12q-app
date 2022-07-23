@@ -1121,12 +1121,6 @@ func competitionScoreHandler(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid CSV headers")
 	}
 
-	// / DELETEしたタイミングで参照が来ると空っぽのランキングになるのでロックする
-	fl, err := flockByTenantID(v.tenantID)
-	if err != nil {
-		return fmt.Errorf("error flockByTenantID: %w", err)
-	}
-	defer fl.Close()
 	var rowNum int64
 	playerIDList := []string{}
 	playerScoreRows := []PlayerScoreRow{}
@@ -1192,6 +1186,13 @@ func competitionScoreHandler(c echo.Context) error {
 			)
 		}
 	}
+
+	// / DELETEしたタイミングで参照が来ると空っぽのランキングになるのでロックする
+	fl, err := flockByTenantID(v.tenantID)
+	if err != nil {
+		return fmt.Errorf("error flockByTenantID: %w", err)
+	}
+	defer fl.Close()
 
 	if _, err := tenantDB.ExecContext(
 		ctx,
@@ -1312,11 +1313,11 @@ func playerHandler(c echo.Context) error {
 	}
 
 	// player_scoreを読んでいるときに更新が走ると不整合が起こるのでロックを取得する
-	fl, err := flockByTenantID(v.tenantID)
-	if err != nil {
-		return fmt.Errorf("error flockByTenantID: %w", err)
-	}
-	defer fl.Close()
+	//fl, err := flockByTenantID(v.tenantID)
+	//if err != nil {
+	//	return fmt.Errorf("error flockByTenantID: %w", err)
+	//}
+	//defer fl.Close()
 
 	pss := []PlayerScoreRow{}
 	if err := tenantDB.SelectContext(

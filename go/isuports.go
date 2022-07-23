@@ -138,7 +138,7 @@ func Run() {
 	}()
 
 	e := echo.New()
-	e.Debug = true
+	e.Debug = false
 	e.Logger.SetLevel(log.INFO)
 
 	var (

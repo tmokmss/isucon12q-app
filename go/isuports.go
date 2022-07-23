@@ -144,9 +144,6 @@ func Run() {
 	e.Debug = false
 	e.Logger.SetLevel(log.INFO)
 
-	playerCache = NewPlayerCacheSlice()
-	competitionCache = NewCompetitionCacheSlice()
-
 	var (
 		sqlLogger io.Closer
 		err       error
@@ -1671,6 +1668,8 @@ type InitializeHandlerResult struct {
 // ベンチマーカーが起動したときに最初に呼ぶ
 // データベースの初期化などが実行されるため、スキーマを変更した場合などは適宜改変すること
 func initializeHandler(c echo.Context) error {
+	playerCache = NewPlayerCacheSlice()
+	competitionCache = NewCompetitionCacheSlice()
 	out, err := exec.Command(initializeScript).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("error exec.Command: %s %e", string(out), err)

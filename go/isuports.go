@@ -387,7 +387,7 @@ func retrievePlayer(ctx context.Context, tenantDB dbOrTx, id string, tenantId in
 		if err := tenantDB.GetContext(ctx, &p, "SELECT * FROM player WHERE id = ?", id); err != nil {
 			return nil, fmt.Errorf("error Select player: id=%s, %w", id, err)
 		}
-		playerCache.Set(key, player)
+		playerCache.Set(key, p)
 	}
 	return &p, nil
 }

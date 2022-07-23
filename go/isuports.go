@@ -812,35 +812,44 @@ func playersAddHandler(c echo.Context) error {
 	displayNames := params["display_name[]"]
 
 	// TODO: bulk insert
-	//playerReq := []PlayerRow{}
+	playerReq := []PlayerRow{}
 	pds := make([]PlayerDetail, 0, len(displayNames))
-	for _, displayName := range displayNames {
-		idd, err := dispenseID(ctx, 1)
+	count := len(displayNames)
+	largestId, err := dispenseID(ctx, count)
+	if err != nil {
+		return fmt.Errorf("error dispenseID: %w", err)
+	}
+	//playerIds := []string{}
+
+	for i := 0; i < count; i += 1 {
+		displayName := displayNames[i]
+		idd := largestId - int64(count-i-1)
 		id := fmt.Sprintf("%x", idd)
-		if err != nil {
-			return fmt.Errorf("error dispenseID: %w", err)
-		}
 
 		now := time.Now().Unix()
-		if _, err := tenantDB.ExecContext(
-			ctx,
-			"INSERT INTO player (id, tenant_id, display_name, is_disqualified, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
-			id, v.tenantID, displayName, false, now, now,
-		); err != nil {
-			return fmt.Errorf(
-				"error Insert player at tenantDB: id=%s, displayName=%s, isDisqualified=%t, createdAt=%d, updatedAt=%d, %w",
-				id, displayName, false, now, now, err,
-			)
-		}
-		p, err := retrievePlayer(ctx, tenantDB, id)
-		if err != nil {
-			return fmt.Errorf("error retrievePlayer: %w", err)
-		}
+		p := PlayerRow{ID: id, TenantID: v.tenantID, DisplayName: displayName, IsDisqualified: false, CreatedAt: now, UpdatedAt: now}
+		playerReq = append(playerReq, p)
+		//playerIds = append(playerIds, id)
+		// originally each row was inserted here
+		//p, err := retrievePlayer(ctx, tenantDB, id)
+		//if err != nil {
+		//	return fmt.Errorf("error retrievePlayer: %w", err)
+		//}
 		pds = append(pds, PlayerDetail{
 			ID:             p.ID,
 			DisplayName:    p.DisplayName,
 			IsDisqualified: p.IsDisqualified,
 		})
+	}
+
+	if _, err := tenantDB.NamedExecContext(
+		ctx,
+		"INSERT INTO player (id, tenant_id, display_name, is_disqualified, created_at, updated_at) VALUES (:id, :tenant_id, :display_name, :is_disqualified, :created_at, :updated_at)",
+		playerReq,
+	); err != nil {
+		return fmt.Errorf(
+			"error Insert players at tenantDB: %w", err,
+		)
 	}
 
 	res := PlayersAddHandlerResult{

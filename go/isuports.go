@@ -390,7 +390,7 @@ func retrievePlayers(ctx context.Context, tenantDB dbOrTx, idList []string) (map
 		return nil, fmt.Errorf("error Select players:  %w", err)
 	}
 	elementMap := make(map[string]PlayerRow)
-	for i := 0; i < len(p); i += 2 {
+	for i := 0; i < len(p); i += 1 {
 		elementMap[p[i].ID] = p[i]
 	}
 	return elementMap, nil

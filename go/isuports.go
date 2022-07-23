@@ -101,7 +101,7 @@ func createTenantDB(id int64) error {
 }
 
 // システム全体で一意なIDを生成する
-func dispenseID(ctx context.Context, count int) (int64, error) {
+func dispenseID(ctx context.Context, count int64) (int64, error) {
 	var id int64
 	var lastErr error
 
@@ -836,7 +836,7 @@ func playersAddHandler(c echo.Context) error {
 	playerReq := []PlayerRow{}
 	pds := make([]PlayerDetail, 0, len(displayNames))
 	count := len(displayNames)
-	largestId, err := dispenseID(ctx, count)
+	largestId, err := dispenseID(ctx, int64(count))
 	if err != nil {
 		return fmt.Errorf("error dispenseID: %w", err)
 	}
@@ -1125,14 +1125,11 @@ func competitionScoreHandler(c echo.Context) error {
 				fmt.Sprintf("error strconv.ParseUint: scoreStr=%s, %s", scoreStr, err),
 			)
 		}
-		idd, err := dispenseID(ctx, 1)
-		id := fmt.Sprintf("%x", idd)
 		if err != nil {
 			return fmt.Errorf("error dispenseID: %w", err)
 		}
 		now := time.Now().Unix()
 		playerScoreRows = append(playerScoreRows, PlayerScoreRow{
-			ID:            id,
 			TenantID:      v.tenantID,
 			PlayerID:      playerID,
 			CompetitionID: competitionID,
@@ -1142,12 +1139,17 @@ func competitionScoreHandler(c echo.Context) error {
 			UpdatedAt:     now,
 		})
 	}
+
+	idd, err := dispenseID(ctx, rowNum)
+	iii := rowNum
 	players, err := retrievePlayers(ctx, tenantDB, playerIDList)
 	if err != nil {
 		return fmt.Errorf("error retrievePlayer: %w", err)
 	}
 	for _, ps := range playerScoreRows {
+		iii--
 		if _, ok := players[ps.PlayerID]; ok {
+			ps.ID = fmt.Sprintf("%x", idd-iii)
 		} else {
 			return echo.NewHTTPError(
 				http.StatusBadRequest,

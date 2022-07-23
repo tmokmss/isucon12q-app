@@ -101,23 +101,24 @@ func createTenantDB(id int64) error {
 }
 
 // システム全体で一意なIDを生成する
-func dispenseID(ctx context.Context, count int) (string, error) {
+func dispenseID(ctx context.Context, count int) (int64, error) {
 	var id int64
 	var lastErr error
 
 	ret, err := adminDB.ExecContext(ctx, "UPDATE `id_generator2` SET id=LAST_INSERT_ID(id + ?);", count)
 	if err != nil {
-		return "", fmt.Errorf("error update id_generator2: %w", err)
+		return 0, fmt.Errorf("error update id_generator2: %w", err)
 	}
 	id, err = ret.LastInsertId()
 	if err != nil {
-		return "", fmt.Errorf("error ret.LastInsertId: %w", err)
+		return 0, fmt.Errorf("error ret.LastInsertId: %w", err)
 	}
 	if id != 0 {
-		return fmt.Sprintf("%x", id), nil
+		return id, nil
+		//return fmt.Sprintf("%x", id), nil
 	}
 
-	return "", lastErr
+	return 0, lastErr
 }
 
 // 全APIにCache-Control: privateを設定する
@@ -798,7 +799,8 @@ func playersAddHandler(c echo.Context) error {
 	//playerReq := []PlayerRow{}
 	pds := make([]PlayerDetail, 0, len(displayNames))
 	for _, displayName := range displayNames {
-		id, err := dispenseID(ctx, 1)
+		idd, err := dispenseID(ctx, 1)
+		id := fmt.Sprintf("%x", idd)
 		if err != nil {
 			return fmt.Errorf("error dispenseID: %w", err)
 		}
@@ -916,7 +918,8 @@ func competitionsAddHandler(c echo.Context) error {
 	title := c.FormValue("title")
 
 	now := time.Now().Unix()
-	id, err := dispenseID(ctx, 1)
+	idd, err := dispenseID(ctx, 1)
+	id := fmt.Sprintf("%x", idd)
 	if err != nil {
 		return fmt.Errorf("error dispenseID: %w", err)
 	}
@@ -1086,7 +1089,8 @@ func competitionScoreHandler(c echo.Context) error {
 				fmt.Sprintf("error strconv.ParseUint: scoreStr=%s, %s", scoreStr, err),
 			)
 		}
-		id, err := dispenseID(ctx, 1)
+		idd, err := dispenseID(ctx, 1)
+		id := fmt.Sprintf("%x", idd)
 		if err != nil {
 			return fmt.Errorf("error dispenseID: %w", err)
 		}

@@ -137,6 +137,8 @@ func Run() {
 	//go func() {
 	//	log.Print(http.ListenAndServe("0.0.0.0:6060", nil))
 	//}()
+	playerCache = NewPlayerCacheSlice()
+	competitionCache = NewCompetitionCacheSlice()
 
 	e := echo.New()
 	e.Debug = false
